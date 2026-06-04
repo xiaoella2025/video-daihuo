@@ -1,0 +1,14 @@
+{
+  "projectName": "video-daihuo",
+  "environment": "local-example",
+  "paths": {
+    "tasksDir": "./tasks",
+    "assetsDir": "./assets",
+    "outputDir": "./tasks/example/output"
+  },
+  "features": {
+    "enableLocalPreview": true,
+    "enableAutomationScripts": false
+  },
+  "notes": "Copy this file to config/local.config.json for local-only settings. Do not store API keys or secrets in Git."
+}
