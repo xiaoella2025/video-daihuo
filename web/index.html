@@ -7,81 +7,610 @@
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <main class="shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">video-daihuo V1</p>
-          <h1>视频号图书带货全自动成片工具 V1</h1>
-          <p class="summary">本地优先的单条视频成片工作台骨架，先打通任务、文案、配音、图片、字幕和合成的操作入口。</p>
+    <div class="app">
+      <!-- ============ Sidebar: step navigation ============ -->
+      <aside class="sidebar">
+        <div class="brand">
+          video-daihuo · V1
+          <strong>本地工作台</strong>
         </div>
-        <div class="status" id="app-status">初始化中</div>
-      </header>
+        <a class="back" id="back-to-list">← 返回任务列表</a>
+        <ul class="steps" id="step-nav">
+          <li class="step" data-step="1"><span class="num">01</span><span class="label">视频导入<small>对标素材</small></span></li>
+          <li class="step" data-step="2"><span class="num">02</span><span class="label">逐字稿<small>原始 transcript</small></span></li>
+          <li class="step" data-step="3"><span class="num">03</span><span class="label">文案处理<small>清洗 / 改写 / 去重</small></span></li>
+          <li class="step" data-step="4"><span class="num">04</span><span class="label">书籍信息<small>书名 / 作者</small></span></li>
+          <li class="step" data-step="5"><span class="num">05</span><span class="label">TTS 配音<small>口播音频</small></span></li>
+          <li class="step" data-step="6"><span class="num">06</span><span class="label">画面与图片<small>分句配图</small></span></li>
+          <li class="step" data-step="7"><span class="num">07</span><span class="label">字幕<small>SRT / ASS</small></span></li>
+          <li class="step" data-step="8"><span class="num">08</span><span class="label">视频合成<small>FFmpeg 方案</small></span></li>
+          <li class="step" data-step="9"><span class="num">09</span><span class="label">导出<small>final / export</small></span></li>
+          <li class="step" data-step="10"><span class="num">10</span><span class="label">日志 / 人工确认<small>扩展接口</small></span></li>
+        </ul>
+      </aside>
 
-      <section class="module-grid" id="module-grid" aria-label="V1 工作台模块">
-        <article class="module-card">
-          <span class="module-index">01</span>
-          <h2>任务信息区</h2>
-          <p>记录任务 ID、任务名称、书名、作者、关键词、状态、成本和耗时。</p>
-          <div class="hook">后续接入点：账号 ID、发布平台、播放量、订单和佣金复盘。</div>
-        </article>
+      <!-- ============ Main ============ -->
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="task-title">未创建任务</h1>
+            <div class="meta">
+              任务 ID：<b id="task-id-display">—</b>　·　状态：<span class="pill" id="task-status-pill">初始化</span>　·　预计耗时：<b id="task-elapsed">—</b>　·　成本：<b id="task-cost">¥0.00</b>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="btn small" id="btn-save-task">保存任务</button>
+            <button class="btn small ghost" id="btn-reset-task">清空当前任务</button>
+            <button class="btn small primary" id="btn-create-task">创建任务</button>
+          </div>
+        </header>
 
-        <article class="module-card">
-          <span class="module-index">02</span>
-          <h2>视频导入区</h2>
-          <p>预留本地视频上传、视频预览、原始视频保存和任务文件夹生成入口。</p>
-          <div class="hook">后续接入点：抖音链接采集、自动采集失败后的本地上传兜底。</div>
-        </article>
+        <!-- Horizontal step progress -->
+        <div class="progress" id="progress-bar"></div>
 
-        <article class="module-card">
-          <span class="module-index">03</span>
-          <h2>逐字稿区</h2>
-          <p>承载音频提取、ASR 识别、原始逐字稿显示、手动编辑和保存。</p>
-          <div class="hook">后续接入点：本地 Whisper、重新识别、raw_transcript 输出。</div>
-        </article>
+        <!-- ===== Module 1: 视频导入 ===== -->
+        <section class="module" data-module="1">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 01 · VIDEO IMPORT</div>
+              <h2>视频导入</h2>
+              <p>选择本地对标视频文件，预览并标记为已上传。后续本地后端会保存到 <code>tasks/{taskId}/source/original_video.mp4</code>。</p>
+            </div>
+            <div class="actions">
+              <span class="pill todo" id="video-status">未上传</span>
+            </div>
+          </header>
 
-        <article class="module-card">
-          <span class="module-index">04</span>
-          <h2>文案处理区</h2>
-          <p>管理逐字稿清洗、书名作者识别、口播改写和轻量去重。</p>
-          <div class="hook">后续接入点：手动 GPT 提示词、GPT API 自动处理和合规检查。</div>
-        </article>
+          <div class="subcard">
+            <h3>任务基础信息</h3>
+            <div class="grid-2">
+              <div class="field">
+                <label>任务名称</label>
+                <input type="text" id="task-name" placeholder="例如：x月x日 健康类书籍带货 #001">
+              </div>
+              <div class="field">
+                <label>原视频标题（对标）</label>
+                <input type="text" id="src-title" placeholder="对标视频原标题">
+              </div>
+              <div class="field">
+                <label>原视频来源</label>
+                <select id="src-source">
+                  <option value="local-upload">本地上传</option>
+                  <option value="douyin">抖音链接（V1 不启用）</option>
+                  <option value="other">其他</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>关键词（逗号分隔）</label>
+                <input type="text" id="task-keywords" placeholder="健康, 长寿, 60岁">
+              </div>
+            </div>
+          </div>
 
-        <article class="module-card">
-          <span class="module-index">05</span>
-          <h2>TTS 配音区</h2>
-          <p>预留最终口播稿输入、长文案切分、多段音频、合并、试听和重生成。</p>
-          <div class="hook">后续接入点：index-tts2、语速音色、停顿规则和发音词典。</div>
-        </article>
+          <div class="subcard">
+            <h3>本地视频文件</h3>
+            <div class="desc">支持 mp4 / mov / mkv。文件不会上传到任何服务器，仅在本地浏览器中预览。</div>
+            <div class="actions">
+              <label class="btn primary" for="video-file-input">选择视频文件</label>
+              <input type="file" id="video-file-input" accept="video/*" hidden>
+              <button class="btn ghost" id="btn-replace-video">替换视频</button>
+              <button class="btn ghost" id="btn-clear-video">移除</button>
+            </div>
+            <div class="kv-row"><span class="k">文件名</span><span class="v" id="video-name">—</span></div>
+            <div class="kv-row"><span class="k">大小</span><span class="v" id="video-size">—</span></div>
+            <div class="kv-row"><span class="k">类型</span><span class="v" id="video-type">—</span></div>
+            <video class="video-preview" id="video-preview" controls hidden></video>
+            <p class="note-text">提示：后续本地后端将把原视频写入 <code>tasks/{taskId}/source/original_video.mp4</code>。</p>
+          </div>
 
-        <article class="module-card">
-          <span class="module-index">06</span>
-          <h2>画面与图片区</h2>
-          <p>按口播切句生成画面记录，支持图片上传、顺序匹配、预览和替换。</p>
-          <div class="hook">后续接入点：GPT-Image-2、九宫格生图、自动切图和 image_map。</div>
-        </article>
+          <div class="subcard">
+            <h3>抖音自动采集（后续版本）</h3>
+            <div class="desc">V1 不启用。后续接入抖音分享链接自动采集，采集失败时回落到本地上传。</div>
+            <div class="actions">
+              <input type="text" placeholder="粘贴抖音分享链接" disabled style="flex:1;min-width:240px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#f5ecda;">
+              <button class="btn" disabled>自动采集（未启用）</button>
+            </div>
+          </div>
+        </section>
 
-        <article class="module-card">
-          <span class="module-index">07</span>
-          <h2>字幕区</h2>
-          <p>预留字幕生成、预览、文本编辑、手动换行、时间调整和样式设置。</p>
-          <div class="hook">后续接入点：SRT/ASS 导出、字幕烧录和手动换行保护。</div>
-        </article>
+        <!-- ===== Module 2: 逐字稿 ===== -->
+        <section class="module" data-module="2">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 02 · TRANSCRIPT</div>
+              <h2>逐字稿</h2>
+              <p>V1 先用手动 / 模拟模式。后续接 Whisper / index-tts2 时输出到 <code>tasks/{taskId}/transcript/raw_transcript.txt</code>。</p>
+            </div>
+            <div class="actions">
+              <span class="pill todo" id="transcript-status">未提取</span>
+            </div>
+          </header>
 
-        <article class="module-card">
-          <span class="module-index">08</span>
-          <h2>视频合成区</h2>
-          <p>管理图片、配音、字幕、背景音乐、封面和声明的竖版 MP4 合成。</p>
-          <div class="hook">后续接入点：FFmpeg 主合成器、Hyperframes 和剪映草稿导出。</div>
-        </article>
+          <div class="subcard">
+            <h3>原始逐字稿</h3>
+            <div class="desc">可以从其他工具粘贴 ASR 结果，或点击「模拟提取逐字稿」用示例文本填充。</div>
+            <div class="actions">
+              <button class="btn" id="btn-mock-transcript">模拟提取逐字稿</button>
+              <button class="btn" id="btn-paste-hint">粘贴说明</button>
+              <button class="btn primary" id="btn-save-transcript">保存原始逐字稿</button>
+              <button class="btn" disabled>Whisper 本地 ASR（后续）</button>
+            </div>
+            <div class="field">
+              <textarea id="raw-transcript" placeholder="粘贴或填写原始逐字稿..."></textarea>
+            </div>
+            <p class="note-text">输出路径预告：<code>tasks/{taskId}/transcript/raw_transcript.txt</code>、<code>tasks/{taskId}/transcript/raw_transcript.json</code>。</p>
+          </div>
+        </section>
 
-        <article class="module-card">
-          <span class="module-index">09</span>
-          <h2>成片预览与导出区</h2>
-          <p>预留最终视频预览、重新合成、导出 MP4 和任务导出记录。</p>
-          <div class="hook">后续接入点：final_video、cover、task_export 和失败重试。</div>
-        </article>
-      </section>
-    </main>
+        <!-- ===== Module 3: 文案处理 ===== -->
+        <section class="module" data-module="3">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 03 · SCRIPT PIPELINE</div>
+              <h2>文案处理</h2>
+              <p>清洗 → 口播改写 → 轻量去重。V1 走「手动 GPT」流程：复制提示词到 GPT，结果粘回。</p>
+            </div>
+            <div class="actions">
+              <span class="pill todo" id="script-status">未处理</span>
+            </div>
+          </header>
+
+          <!-- 3.1 Cleaning -->
+          <div class="subcard">
+            <h3>3.1 清洗逐字稿</h3>
+            <div class="desc">修复 ASR 错字、删除水印 / 口号 / 引导关注、修正书名人名健康词、数字转中文、补标点、去重段落、不改事实。</div>
+            <div class="actions">
+              <button class="btn" id="btn-copy-clean-prompt">复制清洗提示词</button>
+              <button class="btn ghost" id="btn-toggle-clean-prompt">查看 / 隐藏提示词</button>
+              <button class="btn primary" id="btn-save-cleaned">保存清洗稿</button>
+            </div>
+            <div class="prompt-box" id="clean-prompt-box" hidden></div>
+            <div class="field">
+              <label>清洗结果（粘贴 GPT 输出）</label>
+              <textarea id="cleaned-script" placeholder="粘贴 GPT 清洗结果..."></textarea>
+              <span class="hint">输出：<code>tasks/{taskId}/transcript/cleaned_transcript.txt</code></span>
+            </div>
+          </div>
+
+          <!-- 3.3 Rewrite -->
+          <div class="subcard">
+            <h3>3.2 口播文案改写</h3>
+            <div class="desc">保留爆点、保留事实、改成适合视频号口播、不照搬原稿、字数接近。</div>
+            <div class="actions">
+              <input type="text" id="rewrite-version" placeholder="版本名，例如 rewritten_script_v1" style="min-width:240px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-soft);">
+              <button class="btn" id="btn-copy-rewrite-prompt">复制改写提示词</button>
+              <button class="btn ghost" id="btn-toggle-rewrite-prompt">查看 / 隐藏提示词</button>
+              <button class="btn primary" id="btn-save-rewrite">保存改写稿</button>
+            </div>
+            <div class="prompt-box" id="rewrite-prompt-box" hidden></div>
+            <div class="field">
+              <label>改写结果</label>
+              <textarea id="rewritten-script" placeholder="粘贴 GPT 改写结果..."></textarea>
+              <span class="hint">输出：<code>tasks/{taskId}/transcript/rewritten_script_v*.txt</code></span>
+            </div>
+          </div>
+
+          <!-- 3.4 Dedup -->
+          <div class="subcard">
+            <h3>3.3 轻量去重</h3>
+            <div class="desc">微调连接词 / 语气，不改事实、不破坏爆点。为后续复发 / 矩阵预留。</div>
+            <div class="actions">
+              <button class="btn" id="btn-copy-dedup-prompt">复制轻量去重提示词</button>
+              <button class="btn ghost" id="btn-toggle-dedup-prompt">查看 / 隐藏提示词</button>
+              <button class="btn primary" id="btn-save-dedup">保存去重稿</button>
+            </div>
+            <div class="prompt-box" id="dedup-prompt-box" hidden></div>
+            <div class="field">
+              <label>去重结果</label>
+              <textarea id="dedup-script" placeholder="粘贴 GPT 去重结果..."></textarea>
+              <span class="hint">输出：<code>tasks/{taskId}/transcript/dedup_script_v1.txt</code></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Module 4: 书籍信息 ===== -->
+        <section class="module" data-module="4">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 04 · BOOK IDENTITY</div>
+              <h2>书籍信息</h2>
+              <p>书名 / 作者 / 国籍 / 置信度。用于成片尾水印与视频号标题。</p>
+            </div>
+            <div class="actions">
+              <span class="pill todo" id="book-status">未确认</span>
+            </div>
+          </header>
+
+          <div class="subcard">
+            <div class="actions">
+              <button class="btn" id="btn-copy-book-prompt">复制书名识别提示词</button>
+              <button class="btn ghost" id="btn-toggle-book-prompt">查看 / 隐藏提示词</button>
+              <button class="btn" disabled>AI 识别书籍信息（后续）</button>
+              <button class="btn primary" id="btn-save-book">保存书籍信息</button>
+            </div>
+            <div class="prompt-box" id="book-prompt-box" hidden></div>
+
+            <div class="grid-2">
+              <div class="field">
+                <label>书名</label>
+                <input type="text" id="book-title" placeholder="例如：抗炎饮食">
+              </div>
+              <div class="field">
+                <label>作者名称</label>
+                <input type="text" id="book-author" placeholder="例如：[美] 安博士">
+              </div>
+              <div class="field">
+                <label>国籍 / 身份</label>
+                <input type="text" id="book-nationality" placeholder="美国 / 营养学博士">
+              </div>
+              <div class="field">
+                <label>置信度（0-100）</label>
+                <input type="number" id="book-confidence" min="0" max="100" placeholder="0-100">
+              </div>
+              <div class="field col-span-2">
+                <label><input type="checkbox" id="book-confirmed"> 人工已确认（用于成片尾水印 / 视频号标题）</label>
+                <span class="hint">输出：<code>tasks/{taskId}/transcript/book_info.json</code></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== Module 5: TTS ===== -->
+        <section class="module" data-module="5">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 05 · TTS</div>
+              <h2>TTS 配音</h2>
+              <p>V1 不接真实 TTS API，可手动上传音频或先生成 TTS 配置 JSON。后续接 index-tts2。</p>
+            </div>
+            <div class="actions">
+              <span class="pill todo" id="tts-status">未生成</span>
+            </div>
+          </header>
+
+          <div class="grid-2">
+            <div class="subcard">
+              <h3>最终口播稿</h3>
+              <div class="actions">
+                <button class="btn small" id="btn-load-final-from-rewrite">载入改写稿</button>
+                <button class="btn small" id="btn-load-final-from-dedup">载入去重稿</button>
+              </div>
+              <div class="field">
+                <textarea id="tts-final-script" placeholder="将最终口播稿粘贴到这里..."></textarea>
+                <span class="hint">字数：<span id="tts-char-count">0</span> · 预计口播：<span id="tts-duration-estimate">0:00</span>（按 4 字/秒粗估）</span>
+              </div>
+            </div>
+
+            <div class="subcard">
+              <h3>生成配置</h3>
+              <div class="field">
+                <label>音色</label>
+                <select id="tts-voice">
+                  <option value="warm-female-zh">温柔女声（中文）</option>
+                  <option value="steady-male-zh">沉稳男声（中文）</option>
+                  <option value="bright-female-zh">明快女声（中文）</option>
+                  <option value="custom">自定义参考音频</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>语速</label>
+                <select id="tts-rate">
+                  <option value="0.9">0.9x 偏慢</option>
+                  <option value="1.0" selected>1.0x 标准</option>
+                  <option value="1.1">1.1x 偏快</option>
+                  <option value="1.2">1.2x 快</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>数字转中文</label>
+                <select id="tts-num-zh">
+                  <option value="true" selected>开启</option>
+                  <option value="false">关闭</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>发音替换词典（每行 原词=>替换）</label>
+                <textarea id="tts-dict" placeholder="例如：&#10;抗炎=>抗 炎&#10;Omega3=>欧米伽三" style="min-height:80px;"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="subcard">
+            <h3>停顿规则</h3>
+            <div class="grid-3">
+              <div class="field"><label>逗号停顿（ms）</label><input type="number" id="pause-comma" value="180"></div>
+              <div class="field"><label>句号停顿（ms）</label><input type="number" id="pause-period" value="320"></div>
+              <div class="field"><label>问号/感叹号停顿（ms）</label><input type="number" id="pause-qe" value="380"></div>
+              <div class="field"><label>省略号停顿（ms）</label><input type="number" id="pause-ellipsis" value="500"></div>
+            </div>
+          </div>
+
+          <div class="subcard">
+            <h3>音频文件</h3>
+            <div class="desc">V1 可手动上传已合成音频试听；后续 index-tts2 输出到 <code>tasks/{taskId}/audio/final_voice.wav</code>。</div>
+            <div class="actions">
+              <label class="btn primary" for="audio-file-input">上传音频文件</label>
+              <input type="file" id="audio-file-input" accept="audio/*" hidden>
+              <button class="btn" id="btn-gen-tts-json">生成 TTS 配置 JSON</button>
+              <button class="btn" disabled>调用 index-tts2（后续）</button>
+            </div>
+            <audio id="audio-preview" controls hidden></audio>
+            <div class="json-box" id="tts-json-box" hidden></div>
+          </div>
+        </section>
+
+        <!-- ===== Module 6: 画面与图片 ===== -->
+        <section class="module" data-module="6">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 06 · IMAGE GENERATION</div>
+              <h2>画面与图片</h2>
+              <p>按句切分最终口播稿 → 每句一张图。V1 走「手动 GPT 生图 / 上传」，UI 预留九宫格批量生图。</p>
+            </div>
+            <div class="actions">
+              <span class="pill todo" id="image-status">未切分</span>
+            </div>
+          </header>
+
+          <div class="subcard">
+            <div class="actions">
+              <button class="btn primary" id="btn-split-lines">按句切分文案</button>
+              <button class="btn" id="btn-gen-all-prompts">生成全部生图提示词</button>
+              <button class="btn" id="btn-copy-grid-prompt">复制九宫格提示词</button>
+              <label class="btn ghost" for="batch-image-input">批量上传图片</label>
+              <input type="file" id="batch-image-input" accept="image/*" multiple hidden>
+              <button class="btn" disabled>GPT-Image-2 九宫格（后续）</button>
+            </div>
+            <div class="kv-row"><span class="k">总句数</span><span class="v" id="scene-total">0</span></div>
+            <div class="kv-row"><span class="k">已上传图片</span><span class="v" id="scene-uploaded">0</span></div>
+            <div class="kv-row"><span class="k">已确认</span><span class="v" id="scene-confirmed">0</span></div>
+          </div>
+
+          <div class="scene-grid" id="scene-grid"></div>
+        </section>
+
+        <!-- ===== Module 7: 字幕 ===== -->
+        <section class="module" data-module="7">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 07 · SUBTITLES</div>
+              <h2>字幕</h2>
+              <p>根据切句结果生成字幕，手动调时间、文本、换行。导出 SRT；ASS 预留。</p>
+            </div>
+            <div class="actions">
+              <span class="pill todo" id="subtitle-status">未生成</span>
+            </div>
+          </header>
+
+          <div class="subcard">
+            <div class="actions">
+              <button class="btn primary" id="btn-gen-subtitles">从切句生成字幕</button>
+              <button class="btn" id="btn-export-srt">导出 SRT</button>
+              <button class="btn" id="btn-download-srt">下载 .srt 文件</button>
+              <button class="btn" disabled>导出 ASS（后续）</button>
+            </div>
+            <div class="grid-3">
+              <div class="field"><label>每句平均显示时长（秒）</label><input type="number" id="sub-avg-sec" value="2.5" step="0.1"></div>
+              <div class="field"><label>每屏最大字数</label><input type="number" id="sub-max-chars" value="16"></div>
+              <div class="field"><label>是否双行</label><select id="sub-twoline"><option value="false">单行</option><option value="true">双行</option></select></div>
+            </div>
+          </div>
+
+          <div class="subcard">
+            <h3>字幕样式</h3>
+            <div class="grid-3">
+              <div class="field"><label>字号</label><input type="number" id="style-size" value="48"></div>
+              <div class="field"><label>字体</label><input type="text" id="style-font" value="思源黑体 CN Bold"></div>
+              <div class="field"><label>颜色</label><input type="text" id="style-color" value="#FFFFFF"></div>
+              <div class="field"><label>描边</label><input type="text" id="style-stroke" value="#000000 4px"></div>
+              <div class="field"><label>阴影</label><input type="text" id="style-shadow" value="2px 2px 4px rgba(0,0,0,0.6)"></div>
+              <div class="field"><label>位置</label><select id="style-pos"><option value="bottom">底部</option><option value="center">居中</option><option value="top">顶部</option></select></div>
+            </div>
+          </div>
+
+          <div class="subcard">
+            <h3>字幕行（可编辑 / 手动换行）</h3>
+            <table class="sub-table">
+              <thead>
+                <tr><th>#</th><th>开始</th><th>结束</th><th>字幕文本</th><th>手动换行</th></tr>
+              </thead>
+              <tbody id="sub-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="subcard" id="srt-preview-card" hidden>
+            <h3>SRT 预览</h3>
+            <div class="json-box" id="srt-preview"></div>
+          </div>
+        </section>
+
+        <!-- ===== Module 8: 视频合成 ===== -->
+        <section class="module" data-module="8">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 08 · RENDER</div>
+              <h2>视频合成</h2>
+              <p>V1 输出 <code>task_export.json</code>，由后续本地 FFmpeg / Hyperframes 拉取合成。</p>
+            </div>
+            <div class="actions">
+              <span class="pill todo" id="render-status">未配置</span>
+            </div>
+          </header>
+
+          <div class="grid-2">
+            <div class="subcard">
+              <h3>合成参数</h3>
+              <div class="field">
+                <label>画面比例</label>
+                <select id="render-ratio"><option value="9:16" selected>9:16 竖版</option><option value="1:1">1:1 方形</option><option value="16:9">16:9 横版</option></select>
+              </div>
+              <div class="field">
+                <label>是否烧录字幕</label>
+                <select id="render-burn"><option value="true" selected>烧录</option><option value="false">不烧录</option></select>
+              </div>
+              <div class="field">
+                <label>FPS</label>
+                <select id="render-fps"><option value="30" selected>30</option><option value="25">25</option><option value="60">60</option></select>
+              </div>
+              <div class="field">
+                <label>分辨率</label>
+                <select id="render-res"><option value="1080x1920" selected>1080×1920</option><option value="720x1280">720×1280</option></select>
+              </div>
+            </div>
+
+            <div class="subcard">
+              <h3>素材与声明</h3>
+              <div class="field">
+                <label>背景音乐（可选）</label>
+                <input type="file" id="bgm-file" accept="audio/*">
+              </div>
+              <div class="field">
+                <label>封面图（可选）</label>
+                <input type="file" id="cover-file" accept="image/*">
+              </div>
+              <div class="field">
+                <label>健康声明</label>
+                <textarea id="health-claim" placeholder="例如：本视频涉及健康内容，仅供参考，请遵医嘱。" style="min-height:60px;">本视频涉及健康内容，仅供参考，请遵医嘱。</textarea>
+              </div>
+              <div class="field">
+                <label>视频声明</label>
+                <textarea id="video-claim" placeholder="例如：内容基于公开出版物整理，版权归原作者所有。" style="min-height:60px;">内容基于公开出版物整理，版权归原作者所有。</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="subcard">
+            <div class="actions">
+              <button class="btn primary" id="btn-gen-render-json">生成合成方案 JSON</button>
+              <button class="btn" disabled>本地 FFmpeg 合成（后续）</button>
+              <button class="btn" disabled>Hyperframes 合成（后续）</button>
+              <button class="btn" disabled>导出剪映草稿（后续）</button>
+            </div>
+            <div class="json-box" id="render-json-box" hidden></div>
+          </div>
+        </section>
+
+        <!-- ===== Module 9: 导出 ===== -->
+        <section class="module" data-module="9">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 09 · EXPORT</div>
+              <h2>成片预览与导出</h2>
+              <p>预览成片（如已上传），并导出 <code>task_export.json</code>、<code>subtitles.srt</code>、整任务 JSON。</p>
+            </div>
+            <div class="actions">
+              <span class="pill todo" id="export-status">未导出</span>
+            </div>
+          </header>
+
+          <div class="subcard">
+            <h3>成片预览（可选）</h3>
+            <div class="desc">如有合成完成的 MP4，可在此处上传预览。最终输出路径：<code>tasks/{taskId}/output/final_video.mp4</code>。</div>
+            <div class="actions">
+              <label class="btn" for="final-video-input">上传成片预览</label>
+              <input type="file" id="final-video-input" accept="video/*" hidden>
+            </div>
+            <video class="video-preview" id="final-video-preview" controls hidden></video>
+          </div>
+
+          <div class="subcard">
+            <h3>导出</h3>
+            <div class="actions">
+              <button class="btn primary" id="btn-export-task-json">导出 task_export.json</button>
+              <button class="btn" id="btn-export-srt-2">导出 subtitles.srt</button>
+              <button class="btn" id="btn-export-full">导出当前任务完整 JSON</button>
+            </div>
+            <p class="note-text">这些文件由浏览器直接下载到本地。请妥善保存，不要上传到公开仓库。</p>
+          </div>
+        </section>
+
+        <!-- ===== Module 10: 日志 / 扩展占位 ===== -->
+        <section class="module" data-module="10">
+          <header>
+            <div>
+              <div class="eyebrow">STEP 10 · LOG &amp; EXTENSIONS</div>
+              <h2>日志 / 人工确认 / 扩展接口</h2>
+              <p>V1 仅占位，显示当前外部接口状态与人工确认事项。</p>
+            </div>
+          </header>
+
+          <div class="subcard">
+            <h3>扩展接口</h3>
+            <div class="ext-grid">
+              <div class="ext-card"><div><div class="name">GPT API</div><div class="note">用于清洗 / 改写 / 书名识别</div></div><span class="pill todo">未配置</span></div>
+              <div class="ext-card"><div><div class="name">DeepSeek API</div><div class="note">备用 LLM</div></div><span class="pill todo">未配置</span></div>
+              <div class="ext-card"><div><div class="name">index-tts2</div><div class="note">高质量 TTS</div></div><span class="pill todo">未配置</span></div>
+              <div class="ext-card"><div><div class="name">GPT-Image-2</div><div class="note">九宫格生图</div></div><span class="pill todo">未配置</span></div>
+              <div class="ext-card"><div><div class="name">Hyperframes</div><div class="note">视频合成</div></div><span class="pill todo">未配置</span></div>
+              <div class="ext-card"><div><div class="name">抖音自动采集</div><div class="note">对标素材采集</div></div><span class="pill todo">未配置</span></div>
+              <div class="ext-card"><div><div class="name">矩阵账号</div><div class="note">多账号分发 / 复发</div></div><span class="pill brick">后续版本</span></div>
+              <div class="ext-card"><div><div class="name">数据复盘</div><div class="note">播放 / 订单 / 佣金</div></div><span class="pill brick">后续版本</span></div>
+            </div>
+          </div>
+
+          <div class="subcard">
+            <h3>人工确认事项</h3>
+            <ul class="note-text">
+              <li>书名 / 作者已人工确认。</li>
+              <li>清洗稿无违规健康话术。</li>
+              <li>每句配图与口播相关，无 AI 露馅。</li>
+              <li>字幕换行人工调整，没被系统乱拆。</li>
+              <li>没有上传任何 API Key / Cookie / 账号信息 / 真实成片到仓库。</li>
+            </ul>
+          </div>
+
+          <div class="subcard">
+            <h3>运行日志（本地）</h3>
+            <div class="json-box" id="run-log">尚无日志。所有操作都在本地浏览器中执行，未发送任何网络请求。</div>
+          </div>
+        </section>
+      </main>
+
+      <!-- ============ Right summary ============ -->
+      <aside class="summary">
+        <h3>任务摘要</h3>
+        <div class="card">
+          <div class="row"><span>任务 ID</span><b id="sum-id">—</b></div>
+          <div class="row"><span>状态</span><b id="sum-status">初始化</b></div>
+          <div class="row"><span>当前步骤</span><b id="sum-step">01 视频导入</b></div>
+          <div class="row"><span>视频</span><b id="sum-video">未上传</b></div>
+          <div class="row"><span>逐字稿字数</span><b id="sum-transcript">0</b></div>
+          <div class="row"><span>口播字数</span><b id="sum-final">0</b></div>
+          <div class="row"><span>切句数</span><b id="sum-scenes">0</b></div>
+          <div class="row"><span>已上传图片</span><b id="sum-images">0</b></div>
+          <div class="row"><span>字幕行数</span><b id="sum-subs">0</b></div>
+          <div class="row"><span>书名</span><b id="sum-book">—</b></div>
+        </div>
+
+        <h3>流程策略</h3>
+        <div class="card">
+          <div class="note-text">逐字稿先修复，再驱动音频、图片、字幕、合成方案批量生成。每步可单独重跑。</div>
+        </div>
+
+        <h3>后续矩阵字段预留</h3>
+        <details>
+          <summary>展开矩阵字段</summary>
+          <div class="row"><span>账号 ID</span><b>—</b></div>
+          <div class="row"><span>发布平台</span><b>视频号</b></div>
+          <div class="row"><span>发布时间</span><b>—</b></div>
+          <div class="row"><span>播放量</span><b>0</b></div>
+          <div class="row"><span>点赞</span><b>0</b></div>
+          <div class="row"><span>评论</span><b>0</b></div>
+          <div class="row"><span>商品点击</span><b>0</b></div>
+          <div class="row"><span>订单</span><b>0</b></div>
+          <div class="row"><span>佣金</span><b>¥0.00</b></div>
+          <div class="row"><span>是否爆款</span><b>否</b></div>
+          <div class="row"><span>是否复发</span><b>否</b></div>
+        </details>
+
+        <h3>安全提示</h3>
+        <div class="card note-text">
+          所有数据仅保存在浏览器 localStorage。不要把 API Key / Cookie / 真实账号信息 / 成片 / 佣金截图提交到仓库。
+        </div>
+      </aside>
+    </div>
+
+    <div class="toast" id="toast"></div>
     <script src="./app.js"></script>
   </body>
 </html>
