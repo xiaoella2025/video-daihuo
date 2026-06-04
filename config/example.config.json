@@ -1,14 +1,30 @@
 {
   "projectName": "video-daihuo",
-  "environment": "local-example",
+  "mode": "local-first",
+  "api": {
+    "openai": {
+      "enabled": false,
+      "apiKeyEnv": "OPENAI_API_KEY"
+    },
+    "deepseek": {
+      "enabled": false,
+      "apiKeyEnv": "DEEPSEEK_API_KEY"
+    },
+    "indexTTS2": {
+      "enabled": false,
+      "endpoint": ""
+    },
+    "gptImage2": {
+      "enabled": false,
+      "apiKeyEnv": "OPENAI_API_KEY"
+    },
+    "hyperframes": {
+      "enabled": false,
+      "endpoint": ""
+    }
+  },
   "paths": {
     "tasksDir": "./tasks",
-    "assetsDir": "./assets",
-    "outputDir": "./tasks/example/output"
-  },
-  "features": {
-    "enableLocalPreview": true,
-    "enableAutomationScripts": false
-  },
-  "notes": "Copy this file to config/local.config.json for local-only settings. Do not store API keys or secrets in Git."
+    "assetsDir": "./assets"
+  }
 }
