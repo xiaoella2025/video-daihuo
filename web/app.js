@@ -384,6 +384,17 @@ function renderForm() {
   $("#render-res").value = task.render.res;
   $("#health-claim").value = task.render.healthClaim;
   $("#video-claim").value = task.render.videoClaim;
+  // Restore previously generated JSON previews after refresh
+  if (task.render.configJson) {
+    const rbox = $("#render-json-box");
+    rbox.textContent = task.render.configJson;
+    rbox.hidden = false;
+  }
+  if (task.tts.configJson) {
+    const tbox = $("#tts-json-box");
+    tbox.textContent = task.tts.configJson;
+    tbox.hidden = false;
+  }
   updateFinalScriptStats();
   updateSceneCounters();
 }
@@ -476,23 +487,28 @@ function renderSubtitleTable() {
       <td>${i + 1}</td>
       <td class="time"><input type="text" data-i="${i}" data-k="start" value="${fmtSRTTime(row.start)}"></td>
       <td class="time"><input type="text" data-i="${i}" data-k="end" value="${fmtSRTTime(row.end)}"></td>
-      <td><input type="text" data-i="${i}" data-k="text" value="${escapeHtml(row.text)}"></td>
+      <td><textarea rows="2" data-i="${i}" data-k="text" style="width:100%;background:transparent;border:1px solid transparent;padding:4px 6px;border-radius:4px;resize:vertical;font-family:inherit;line-height:1.5;">${escapeHtml(row.text)}</textarea></td>
       <td><label><input type="checkbox" data-i="${i}" data-k="manualBreak" ${row.manualBreak ? "checked" : ""}> 已换行</label></td>
     `;
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll("input").forEach(inp => {
-    inp.addEventListener("input", (e) => {
-      const i = +e.target.dataset.i;
-      const k = e.target.dataset.k;
-      const row = task.subtitles.lines[i];
-      if (k === "manualBreak") row.manualBreak = e.target.checked;
-      else if (k === "text") row.text = e.target.value;
-      else if (k === "start") row.start = parseSRTTime(e.target.value);
-      else if (k === "end") row.end = parseSRTTime(e.target.value);
-      saveLocal();
-    });
-  });
+  const onChange = (e) => {
+    const i = +e.target.dataset.i;
+    const k = e.target.dataset.k;
+    const row = task.subtitles.lines[i];
+    if (k === "manualBreak") row.manualBreak = e.target.checked;
+    else if (k === "text") {
+      row.text = e.target.value;
+      row.manualBreak = /\n/.test(row.text);
+      // sync checkbox UI without re-rendering whole table
+      const cb = tbody.querySelector(`input[type="checkbox"][data-i="${i}"]`);
+      if (cb) cb.checked = row.manualBreak;
+    }
+    else if (k === "start") row.start = parseSRTTime(e.target.value);
+    else if (k === "end") row.end = parseSRTTime(e.target.value);
+    saveLocal();
+  };
+  tbody.querySelectorAll("input, textarea").forEach(inp => inp.addEventListener("input", onChange));
 }
 
 // ---------- Final script stats ----------
