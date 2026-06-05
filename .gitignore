@@ -8,6 +8,7 @@ Thumbs.db
 config/local.config.json
 config/*.secret.json
 
+tasks/**/task_export.json
 tasks/**/source/
 tasks/**/audio/
 tasks/**/images/
